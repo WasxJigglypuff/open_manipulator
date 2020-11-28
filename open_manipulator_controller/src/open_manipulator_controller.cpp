@@ -175,6 +175,9 @@ void OpenManipulatorController::initSubscriber()
                                                        &OpenManipulatorController::moveGroupGoalCallback, this);
     execute_traj_goal_sub_ = node_handle_.subscribe("/execute_trajectory/goal", 100,
                                                        &OpenManipulatorController::executeTrajGoalCallback, this);
+    joint_group_position_sub_ = node_handle_.subscribe("/joint_group_position_controller/command", 100,
+                                                       &OpenManipulatorController::jointGroupPositionCallback, this);
+
   }
 }
 
@@ -239,6 +242,16 @@ void OpenManipulatorController::executeTrajGoalCallback(const moveit_msgs::Execu
   log::println("[INFO] [OpenManipulator Controller] Execute Moveit planned path", "GREEN");
   moveit_plan_state_ = true;
 }
+
+void OpenManipulatorController::jointGroupPositionCallback(const trajectory_msgs::JointTrajectory::ConstPtr &msg)
+{
+  joint_trajectory_ = *msg;
+  moveit_plan_state_ = true;
+
+  log::println("[INFO] [OpenManipulator Controller] Execute Joint Trajectory command", "GREEN");
+
+}
+
 
 bool OpenManipulatorController::goalJointSpacePathCallback(open_manipulator_msgs::SetJointPosition::Request  &req,
                                                            open_manipulator_msgs::SetJointPosition::Response &res)
@@ -774,15 +787,33 @@ void OpenManipulatorController::moveitTimer(double present_time)
       else {
         JointWaypoint target;
 
-        for(uint8_t i = 0; i < joint_trajectory_.points[step_cnt].positions.size(); i++)
-        {
-          JointValue temp;
-          temp.position = joint_trajectory_.points[step_cnt].positions.at(i);
-          temp.velocity = joint_trajectory_.points[step_cnt].velocities.at(i);
-          temp.acceleration = joint_trajectory_.points[step_cnt].accelerations.at(i);
-          target.push_back(temp);
+        if (joint_trajectory_.points[step_cnt].positions.size() == 4) {
+          for(uint8_t i = 0; i < joint_trajectory_.points[step_cnt].positions.size(); i++)
+          {
+            JointValue temp;
+            // Positions
+            temp.position = joint_trajectory_.points[step_cnt].positions.at(i);
+            // Velocities
+            if (joint_trajectory_.points[step_cnt].velocities.size() == 0){
+              temp.velocity = 0;
+            }
+            else {
+              temp.velocity = joint_trajectory_.points[step_cnt].velocities.at(i);
+            }
+            // Accelerations
+            if (joint_trajectory_.points[step_cnt].accelerations.size() == 0) {
+              temp.acceleration = 0;
+            }
+            else {
+              temp.acceleration = joint_trajectory_.points[step_cnt].accelerations.at(i);
+            }
+            target.push_back(temp);
+          }
+          open_manipulator_.makeJointTrajectory(target, path_time);
         }
-        open_manipulator_.makeJointTrajectory(target, path_time);
+        else {
+          log::warn("Position array length: ", joint_trajectory_.points[step_cnt].positions.size());
+        }
       }
       step_cnt++;
       priv_time = present_time;

@@ -79,6 +79,7 @@ class OpenManipulatorController
   ros::Subscriber display_planned_path_sub_;
   ros::Subscriber move_group_goal_sub_;
   ros::Subscriber execute_traj_goal_sub_;
+  ros::Subscriber joint_group_position_sub_;
 
   // ROS Service Server
   ros::ServiceServer goal_joint_space_path_server_;
@@ -134,6 +135,7 @@ class OpenManipulatorController
   void displayPlannedPathCallback(const moveit_msgs::DisplayTrajectory::ConstPtr &msg);
   void moveGroupGoalCallback(const moveit_msgs::MoveGroupActionGoal::ConstPtr &msg);
   void executeTrajGoalCallback(const moveit_msgs::ExecuteTrajectoryActionGoal::ConstPtr &msg);
+  void jointGroupPositionCallback(const trajectory_msgs::JointTrajectory::ConstPtr &msg);
 
   double getControlPeriod(void){return control_period_;}
 
